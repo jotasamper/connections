@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nigeria Fatalities</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@300;400;500&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #f5f0e8;
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .card {
+    background: #fff;
+    border-radius: 4px;
+    box-shadow: 0 2px 30px rgba(0,0,0,0.10);
+    padding: 44px 48px 36px;
+    max-width: 820px;
+    width: 100%;
+  }
+
+  .header {
+    margin-bottom: 8px;
+  }
+
+  .title {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: #1a1a1a;
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+    color: #888;
+    font-weight: 300;
+    letter-spacing: 0.03em;
+    margin-bottom: 32px;
+  }
+
+  .chart-area {
+    position: relative;
+  }
+
+  .y-grid {
+    position: absolute;
+    left: 56px;
+    right: 0;
+    top: 0;
+    bottom: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    pointer-events: none;
+  }
+
+  .grid-line {
+    border-top: 1px dashed #e0d8cc;
+    width: 100%;
+    position: relative;
+  }
+
+  .grid-label {
+    position: absolute;
+    left: -56px;
+    top: -10px;
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 400;
+    width: 48px;
+    text-align: right;
+  }
+
+  .bars-container {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 320px;
+    padding-left: 56px;
+    padding-bottom: 44px;
+    position: relative;
+  }
+
+  .bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    position: relative;
+  }
+
+  .bar {
+    width: 100%;
+    background: #882335;
+    border-radius: 2px 2px 0 0;
+    transition: opacity 0.2s;
+    position: relative;
+    cursor: pointer;
+  }
+
+  .bar:hover {
+    opacity: 0.82;
+  }
+
+  .bar-label {
+    position: absolute;
+    bottom: -26px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+    font-weight: 400;
+  }
+
+  .bar-value {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10.5px;
+    color: #555;
+    font-weight: 500;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+  }
+
+  .bar:hover .bar-value {
+    opacity: 1;
+  }
+
+  .x-axis-line {
+    position: absolute;
+    left: 56px;
+    right: 0;
+    bottom: 44px;
+    border-top: 2px solid #1a1a1a;
+  }
+
+  .source {
+    margin-top: 20px;
+    font-size: 11px;
+    color: #bbb;
+    text-align: right;
+  }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    background: #882335;
+  }
+
+  .legend-text {
+    font-size: 12px;
+    color: #666;
+    font-weight: 400;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+
+
+  <div class="legend">
+    <div class="legend-dot"></div>
+    <div class="legend-text">Fatalities</div>
+  </div>
+
+  <div class="chart-area">
+    <div class="y-grid" id="ygrid"></div>
+    <div class="bars-container" id="bars"></div>
+    <div class="x-axis-line"></div>
+  </div>
+
+
+</div>
+
+<script>
+  // Nigeria ACLED fatalities by year (approximate well-known figures)
+  const data = [
+    { year: '2009', value: 405 },
+    { year: '2010', value: 18 },
+    { year: '2011', value: 324 },
+    { year: '2012', value: 811 },
+    { year: '2013', value: 1721 },
+    { year: '2014', value: 5273 },
+    { year: '2015', value: 6205 },
+    { year: '2016', value: 2937 },
+  ];
+
+  const maxVal = Math.max(...data.map(d => d.value));
+  const chartHeight = 276; // inner bar area
+
+  // Y axis ticks
+  const ticks = [0, 1000, 2000, 3000, 4000, 5000, 6000, 7000];
+  const yGrid = document.getElementById('ygrid');
+  ticks.slice().reverse().forEach(t => {
+    const line = document.createElement('div');
+    line.className = 'grid-line';
+    const label = document.createElement('span');
+    label.className = 'grid-label';
+    label.textContent = t === 0 ? '0' : (t >= 1000 ? (t/1000) + 'k' : t);
+    line.appendChild(label);
+    yGrid.appendChild(line);
+  });
+
+  // Bars
+  const barsEl = document.getElementById('bars');
+  data.forEach(d => {
+    const group = document.createElement('div');
+    group.className = 'bar-group';
+
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const heightPct = (d.value / 7000) * 100;
+    bar.style.height = heightPct + '%';
+
+    const val = document.createElement('span');
+    val.className = 'bar-value';
+    val.textContent = d.value.toLocaleString();
+    bar.appendChild(val);
+
+    const lbl = document.createElement('span');
+    lbl.className = 'bar-label';
+    lbl.textContent = d.year;
+
+    group.appendChild(bar);
+    group.appendChild(lbl);
+    barsEl.appendChild(group);
+  });
+</script>
+</body>
+</html>
