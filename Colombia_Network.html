@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chord Diagram</title>
+
+<!-- amCharts 5 -->
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/flow.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol";
+    margin: 5;
+  }
+
+  #chartdiv {
+    width: 100%;
+    height: 700px;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="chartdiv"></div>
+
+<script>
+// ---------------------------------------
+// amCharts 5 Chord Diagram
+// ---------------------------------------
+
+// Create root element
+var root = am5.Root.new("chartdiv");
+
+// Set theme
+root.setThemes([
+  am5themes_Animated.new(root)
+]);
+
+// Create series
+var series = root.container.children.push(
+  am5flow.ChordDirected.new(root, {
+    startAngle: 80,
+    padAngle: 1,
+    linkHeadRadius: undefined,
+    sourceIdField: "from",
+    targetIdField: "to",
+    valueField: "value"
+  })
+);
+
+// Label styling (white + rotated 90°)
+series.nodes.labels.template.setAll({
+  textType: "radial",
+  centerX: 0,
+  fontSize: 9,
+  fill: am5.color(0xffffff)   // white labels
+});
+
+// Rotate labels +90 degrees from current
+series.nodes.labels.template.adapters.add("rotation", function(rotation, target) {
+  return rotation + 90;
+});
+
+// Link color = source node color
+series.links.template.set("fillStyle", "source");
+
+// DATA
+series.data.setAll([
+  { from: "Government of Colombia", to: "ELN", value: 667 },
+    { from: "Government of Colombia", to: "FARC - Mordisco", value: 14 },
+    { from: "FARC - Mordisco", to: "ELN", value: 10 },  
+    { from: "Government of Colombia", to: "FARC dissidents", value: 84 },
+    { from: "Government of Colombia", to: "EPL - Megateo", value: 42 },  
+    { from: "Government of Colombia", to: "FARC", value: 2488 },  
+    { from: "Government of Colombia", to: "EPL", value: 10 },  
+    { from: "AUC", to: "FARC", value: 108 },  
+    { from: "AUC", to: "ELN", value: 22 },  
+    { from: "Cali Cartel", to: "Medellín Cartel", value: 4 },  
+    { from: "Medellín Cartel", to: "PEPES", value: 4 },  
+    { from: "Bloque Central Bolívar", to: "ELN, FARC", value: 1 }
+]);
+
+// Animate on load
+series.appear(1000, 100);
+</script>
+
+</body>
+</html>
