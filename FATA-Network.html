@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chord Diagram</title>
+
+<!-- amCharts 5 -->
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/flow.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol";
+    margin: 5;
+  }
+
+  #chartdiv {
+    width: 100%;
+    height: 700px;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="chartdiv"></div>
+
+<script>
+// ---------------------------------------
+// amCharts 5 Chord Diagram
+// ---------------------------------------
+
+// Create root element
+var root = am5.Root.new("chartdiv");
+
+// Set theme
+root.setThemes([
+  am5themes_Animated.new(root)
+]);
+
+// Create series
+var series = root.container.children.push(
+  am5flow.ChordDirected.new(root, {
+    startAngle: 80,
+    padAngle: 1,
+    linkHeadRadius: undefined,
+    sourceIdField: "from",
+    targetIdField: "to",
+    valueField: "value"
+  })
+);
+
+// Label styling (white + rotated 90°)
+series.nodes.labels.template.setAll({
+  textType: "radial",
+  centerX: 0,
+  fontSize: 9,
+  fill: am5.color(0xffffff)   // white labels
+});
+
+// Rotate labels +90 degrees from current
+series.nodes.labels.template.adapters.add("rotation", function(rotation, target) {
+  return rotation + 90;
+});
+
+// Link color = source node color
+series.links.template.set("fillStyle", "source");
+
+// DATA
+series.data.setAll([
+   {"from":"Government of India","to":"Government of Pakistan","value":86},
+	{"from":"LeJ","to":"Civilians","value":47},
+	{"from":"Bangesh","to":"Turi","value":37},
+	{"from":"Government of Pakistan","to":"TTP","value":3321},
+	{"from":"Government of Pakistan","to":"BLA","value":124},
+	{"from":"Government of Pakistan","to":"Lashkar-e-Islam","value":123},
+	{"from":"Bangesh","to":"Mangal","value":9},
+	{"from":"Lashkar-e-Islam","to":"Lashkar of Zakakhel tribe","value":49},
+	{"from":"Government of Pakistan","to":"BRA","value":76},
+	{"from":"TTP","to":"Civilians","value":322},
+	{"from":"Government of Pakistan","to":"BLF","value":10},
+	{"from":"Lashkar-e-Islam","to":"Lashkar of Akakhel tribe","value":12},
+	{"from":"BLA","to":"Civilians","value":46},
+	{"from":"Lashkar-e-Islam","to":"TTP","value":8},
+	{"from":"Lashkar-e-Islam","to":"Tawheed ul-Islam","value":26},
+	{"from":"Forces of Momin Afridi","to":"TTP - TA","value":5},
+	{"from":"Lashkar-e-Islam","to":"TTP - TA","value":15},
+	{"from":"Mangal","to":"Turi","value":25},
+	{"from":"Lashkar of Salarzai tribe","to":"TTP","value":10},
+	{"from":"TTP - MR","to":"TTP - MT","value":7},
+	{"from":"IMU","to":"Lashkhar of Wazir tribe","value":17},
+	{"from":"Government of Pakistan","to":"UBA","value":8},
+	{"from":"Government of Pakistan","to":"Baloch Ittehad","value":9},
+	{"from":"Lashkar of Kukikhel clan","to":"TTP","value":2},
+	{"from":"Ansaar ul-Islam","to":"Lashkar-e-Islam","value":32},
+	{"from":"Lashkar of Mohmand tribe","to":"TTP","value":8},
+	{"from":"Lashkar-e-Islam","to":"Civilians","value":16},
+	{"from":"Government of United States of America","to":"al-Qaida","value":418},
+	{"from":"Kachai sub-tribe of Bangesh","to":"Mishti","value":3},
+	{"from":"Forces of Turkestan Bhittani","to":"TTP","value":6},
+	{"from":"Forces of Shah Sahib","to":"TTP","value":4},
+	{"from":"Fedayeen Islam","to":"Civilians","value":1},
+	{"from":"Government of Afghanistan","to":"Civilians","value":48},
+	{"from":"Lashkar of Orakzai tribe","to":"TTP","value":8},
+	{"from":"Government of Afghanistan","to":"Taleban","value":18114},
+	{"from":"Laskhar of Masozai Qaumi tribe","to":"TTP","value":7},
+	{"from":"TTP-Islahi","to":"Civilians","value":1},
+	{"from":"UBA","to":"Civilians","value":6},
+	{"from":"Government of Pakistan","to":"TTP - TA","value":3},
+	{"from":"Ansaar ul-Islam","to":"TTP","value":8},
+	{"from":"Supporters of MQM","to":"Supporters of PPP","value":1},
+	{"from":"Government of Pakistan","to":"IMU","value":4},
+	{"from":"Government of China","to":"ETIM","value":1},
+	{"from":"Government of Afghanistan","to":"Hizb-i Islami-yi Afghanistan","value":98},
+	{"from":"Hizb-i Islami-yi Afghanistan","to":"Taleban","value":22},
+	{"from":"Taleban","to":"Civilians","value":569},
+	{"from":"Jondullah","to":"Civilians","value":1},
+	{"from":"Government of Iran","to":"Jondullah","value":1},
+	{"from":"Hizb-i Islami-yi Afghanistan","to":"Jam'iyyat-i Islami-yi Afghanistan","value":1},
+	{"from":"Forces of Amanullah Khan","to":"Forces of Arbab Basir","value":2},
+	{"from":"Jam'iyyat-i Islami-yi Afghanistan","to":"Junbish-i Milli-yi Islami","value":55},
+	{"from":"Forces of Amanullah Khan","to":"Forces of Ismail Khan","value":8},
+	{"from":"Government of Afghanistan","to":"UIFSA","value":86},
+	{"from":"Government of Afghanistan","to":"Government of United Kingdom, Government of United States of America","value":91},
+	{"from":"UIFSA","to":"Civilians","value":1},
+	{"from":"Hizb-i Wahdat","to":"Hizb-i Wahdat - Akbari faction","value":4},
+	{"from":"Forces of Abdul Rahman Khan","to":"Forces of Amanullah","value":1},
+	{"from":"Jaish-ul-Islam","to":"Civilians","value":3},
+	{"from":"Government of Pakistan","to":"Jamaat-ul-Ahrar","value":4},
+	{"from":"TTP-KM","to":"TTP-SM","value":16},
+	{"from":"Forces of Mullah Abdol Rauf Khadim","to":"Taleban","value":1},
+	{"from":"IS","to":"Taleban","value":44},
+	{"from":"Government of Afghanistan","to":"IS","value":262},
+	{"from":"IS","to":"Civilians","value":21},
+	{"from":"Government of Pakistan","to":"MQM","value":1},
+	{"from":"Taleban","to":"High Council of Afghanistan Islamic Emirate","value":15},
+	{"from":"High Council of Afghanistan Islamic Emirate, IS","to":"Taleban","value":2},
+	{"from":"Government of India","to":"Kashmir insurgents","value":1},
+	{"from":"Government of Pakistan","to":"IS","value":3},
+	{"from":"BLA","to":"UBA","value":1}
+]);
+
+// Animate on load
+series.appear(1000, 100);
+</script>
+
+</body>
+</html>
