@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chord Diagram</title>
+
+<!-- amCharts 5 -->
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/flow.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
+
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+      "Segoe UI Symbol";
+    margin: 5;
+  }
+
+  #chartdiv {
+    width: 100%;
+    height: 700px;
+  }
+</style>
+</head>
+
+<body>
+
+<div id="chartdiv"></div>
+
+<script>
+// ---------------------------------------
+// amCharts 5 Chord Diagram
+// ---------------------------------------
+
+// Create root element
+var root = am5.Root.new("chartdiv");
+
+// Set theme
+root.setThemes([
+  am5themes_Animated.new(root)
+]);
+
+// Create series
+var series = root.container.children.push(
+  am5flow.ChordDirected.new(root, {
+    startAngle: 80,
+    padAngle: 1,
+    linkHeadRadius: undefined,
+    sourceIdField: "from",
+    targetIdField: "to",
+    valueField: "value"
+  })
+);
+
+// Label styling (white + rotated 90°)
+series.nodes.labels.template.setAll({
+  textType: "radial",
+  centerX: 0,
+  fontSize: 9,
+  fill: am5.color(0xffffff)   // white labels
+});
+
+// Rotate labels +90 degrees from current
+series.nodes.labels.template.adapters.add("rotation", function(rotation, target) {
+  return rotation + 90;
+});
+
+// Link color = source node color
+series.links.template.set("fillStyle", "source");
+
+// DATA
+series.data.setAll([
+   { from: "Government of Myanmar", to: "RSO", value: 16 },
+    { from: "Government of Myanmar", to: "ULA", value: 133 },
+    { from: "Government of Myanmar", to: "MNDAA", value: 64 },  
+    { from: "Government of India", to: "NSCN-IM", value: 39 },  
+    { from: "NSCN-IM", to: "NSCN-K", value: 149 },  
+    { from: "NSCN-IM", to: "NSCN-U", value: 13 },  
+    { from: "NSCN-K", to: "NSCN-K-K", value: 43 },  
+    { from: "Government of Myanmar", to: "NSCN-K", value: 19 },  
+    { from: "Government of Myanmar", to: "KNU", value: 336 },  
+    { from: "Government of Myanmar", to: "God's Army", value: 3 },  
+    { from: "Government of Myanmar", to: "DKBA 5", value: 31 },  
+    { from: "Government of Myanmar", to: "ABSDF", value: 5 },  
+    { from: "Government of Myanmar", to: "MNSP", value: 10 },  
+    { from: "Government of Myanmar", to: "BMA", value: 1 },                                                                                                 
+    { from: "Government of Myanmar", to: "KIO", value: 218 },  
+    { from: "Government of Myanmar", to: "KNPP", value: 63 },  
+    { from: "Government of Myanmar", to: "MTA", value: 29 },  
+    { from: "Government of Myanmar", to: "RCSS", value: 125 },  
+    { from: "Government of Myanmar", to: "UWSA", value: 9 },  
+    { from: "DKBA", to: "KNU", value: 37 },  
+    { from: "RCSS", to: "UWSA", value: 7 },  
+    { from: "MDA", to: "MDA - LM", value: 1 },  
+    { from: "MTA", to: "USWA", value: 10 },  
+    { from: "Government of Myanmar", to: "SSPP", value: 41 },    
+    { from: "Government of Myanmar", to: "PSLF", value: 93 },  
+    { from: "Government of Myanmar", to: "ARSA", value: 26 }
+]);
+
+// Animate on load
+series.appear(1000, 100);
+</script>
+
+</body>
+</html>
