@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Myanmar Connections Map</title>
+
+  <!-- Mapbox GL JS -->
+  <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.css" rel="stylesheet" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: #000;
+    }
+
+    #map {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 100%;
+    }
+
+    #legend {
+      position: absolute;
+      bottom: 30px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.75);
+      padding: 14px 18px;
+      border-radius: 6px;
+      color: #fff;
+      font-family: sans-serif;
+      font-size: 13px;
+      z-index: 1;
+      min-width: 160px;
+    }
+
+    #legend h4 {
+      margin: 0 0 10px;
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #aaa;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+      transition: opacity 0.2s;
+    }
+
+    .legend-item.off {
+      opacity: 0.3;
+    }
+
+    .swatch {
+      width: 30px;
+      height: 3px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="map"></div>
+  <div id="legend"><h4>Flow Type</h4></div>
+
+  <script>
+    mapboxgl.accessToken =
+      "pk.eyJ1Ijoiam90YXNhbXBlciIsImEiOiJjbGxiN21ma3kwM3lhM2V0MzR1cDc3ZTltIn0.e7ieFrt34Hy1EnxHnF585Q";
+
+    const map = new mapboxgl.Map({
+      container: "map",
+      style: "mapbox://styles/jotasamper/cmlskokxc000q01sn7z496mte",
+      center: [96.0, 21.0],
+      zoom: 2,
+      projection: "globe"
+    });
+
+    const DATA_URL =
+      "https://raw.githubusercontent.com/jotasamper/connections/refs/heads/main/Myanmarconnection4.json";
+
+    const PALETTE = [
+      "#ff00ff", "#dce5e8", "#cbcf0e", "#ff7300",
+      "#ffff00", "#ff8800", "#aa88ff", "#ffffff"
+    ];
+
+    let activeTypes = new Set();
+    let colorMap = {};
+    let allTypes = [];
+
+    function buildColorExpression() {
+      const expr = ["match", ["get", "flow_type"]];
+      allTypes.forEach(t => expr.push(t, colorMap[t]));
+      expr.push("#ffffff");
+      return expr;
+    }
+
+    function buildFilter() {
+      if (activeTypes.size === 0) return ["==", "1", "0"];
+      if (activeTypes.size === allTypes.length) return null;
+      return ["in", ["get", "flow_type"], ["literal", [...activeTypes]]];
+    }
+
+    function applyFilter() {
+      const f = buildFilter();
+      if (map.getLayer("animated-line")) map.setFilter("animated-line", f);
+    }
+
+    function buildLegend() {
+      const legend = document.getElementById("legend");
+      legend.querySelectorAll(".legend-item").forEach(el => el.remove());
+      allTypes.forEach(type => {
+        const item = document.createElement("div");
+        item.className = "legend-item";
+        item.dataset.type = type;
+        item.innerHTML = `<div class="swatch" style="background:${colorMap[type]};"></div><span>${type}</span>`;
+        item.addEventListener("click", () => {
+          if (activeTypes.has(type)) {
+            activeTypes.delete(type);
+            item.classList.add("off");
+          } else {
+            activeTypes.add(type);
+            item.classList.remove("off");
+          }
+          applyFilter();
+        });
+        legend.appendChild(item);
+      });
+    }
+
+    map.on("load", () => {
+
+      map.setFog({
+        color: "rgba(0,0,0,0)",
+        "horizon-blend": 0.01,
+        range: [-1, 2]
+      });
+
+      if (map.getLayer("background")) {
+        map.setPaintProperty("background", "background-color", "#000000");
+        map.setPaintProperty("background", "background-emissive-strength", 1);
+      }
+
+      map.addSource("countries", {
+        type: "vector",
+        url: "mapbox://mapbox.country-boundaries-v1"
+      });
+
+      map.addLayer({
+        id: "myanmar-outline",
+        type: "line",
+        source: "countries",
+        "source-layer": "country_boundaries",
+        paint: {
+          "line-color": "#FFFFFF",
+          "line-width": 3,
+          "line-emissive-strength": 0.8
+        },
+        filter: ["==", ["get", "iso_3166_1_alpha_3"], "MMR"]
+      });
+
+      fetch(DATA_URL)
+        .then(r => r.json())
+        .then(geojson => {
+
+          const typesSet = new Set();
+          geojson.features.forEach(f => {
+            const t = f.properties && f.properties.flow_type;
+            if (t) typesSet.add(t);
+          });
+          allTypes = [...typesSet].sort();
+
+          allTypes.forEach((t, i) => {
+            colorMap[t] = PALETTE[i % PALETTE.length];
+            activeTypes.add(t);
+          });
+
+          map.addSource("connections", {
+            type: "geojson",
+            data: geojson
+          });
+
+          map.addLayer({
+            id: "animated-line",
+            type: "line",
+            source: "connections",
+            paint: {
+              "line-width": 1.2,
+              "line-dasharray": [0, 1, .5],
+              "line-color": buildColorExpression(),
+              "line-opacity": 1,
+              "line-emissive-strength": 1
+            }
+          });
+
+          buildLegend();
+
+          const dashArraySequence = [
+            [0,4,3],[0.5,4,2.5],[1,4,2],[1.5,4,1.5],[2,4,1],[2.5,4,0.5],[3,4,0],
+            [0,0.5,3,3.5],[0,1,3,3],[0,1.5,3,2.5],[0,2,3,2],[0,2.5,3,1.5],[0,3,3,1],[0,3.5,3,0.5]
+          ];
+
+          let step = 0;
+          function animateDashArray(timestamp) {
+            const newStep = Math.floor((timestamp / 50) % dashArraySequence.length);
+            if (newStep !== step) {
+              map.setPaintProperty("animated-line", "line-dasharray", dashArraySequence[newStep]);
+              step = newStep;
+            }
+            requestAnimationFrame(animateDashArray);
+          }
+          animateDashArray(0);
+        });
+    });
+  </script>
+</body>
+</html>
