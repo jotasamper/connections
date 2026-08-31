@@ -1,0 +1,1475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abstract Grader</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600&display=swap">
+<style>
+  /* ── Token system ── */
+  :root {
+    --bg: #EFECE5;
+    --surface: #FAFAF8;
+    --surface-alt: #F2EFE8;
+    --text: #2C2B28;
+    --text-muted: #6B6860;
+    --border: #D8D4CB;
+    --accent: #3D6B5E;
+    --accent-light: #EAF2F0;
+    --accent-text: #2A4D44;
+    --warn: #8B5E1A;
+    --warn-bg: #FDF3E2;
+    --done-bg: #E9F2EF;
+    --score-unset: #E8E5DE;
+    --score-unset-text: #888480;
+    --score-active: #3D6B5E;
+    --score-active-text: #FFFFFF;
+    --star: #C5944A;
+    --total-bg: #2C2B28;
+    --total-text: #F4F2ED;
+    --shadow: rgba(44,43,40,0.08);
+    --radius: 8px;
+    --sidebar-w: 260px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1A1A18;
+      --surface: #232320;
+      --surface-alt: #2A2A27;
+      --text: #E8E5DF;
+      --text-muted: #9A9690;
+      --border: #363633;
+      --accent: #6A9E91;
+      --accent-light: #1D2E2B;
+      --accent-text: #A8C8C0;
+      --warn: #D4963A;
+      --warn-bg: #2A2010;
+      --done-bg: #1A2E2A;
+      --score-unset: #2E2D2A;
+      --score-unset-text: #706E6A;
+      --score-active: #6A9E91;
+      --score-active-text: #111412;
+      --star: #D4963A;
+      --total-bg: #E8E5DF;
+      --total-text: #1A1A18;
+      --shadow: rgba(0,0,0,0.25);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --bg: #1A1A18;
+    --surface: #232320;
+    --surface-alt: #2A2A27;
+    --text: #E8E5DF;
+    --text-muted: #9A9690;
+    --border: #363633;
+    --accent: #6A9E91;
+    --accent-light: #1D2E2B;
+    --accent-text: #A8C8C0;
+    --warn: #D4963A;
+    --warn-bg: #2A2010;
+    --done-bg: #1A2E2A;
+    --score-unset: #2E2D2A;
+    --score-unset-text: #706E6A;
+    --score-active: #6A9E91;
+    --score-active-text: #111412;
+    --star: #D4963A;
+    --total-bg: #E8E5DF;
+    --total-text: #1A1A18;
+    --shadow: rgba(0,0,0,0.25);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ── Sidebar ── */
+  #sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #sidebar-header {
+    padding: 18px 16px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  #sidebar-header h1 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 2px;
+  }
+
+  #sidebar-header .subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  #progress-bar-wrap {
+    padding: 12px 16px 0;
+  }
+
+  #progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  #progress-track {
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  #progress-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+    width: 0%;
+  }
+
+  #presenter-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+
+  .presenter-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .presenter-item:hover { background: var(--surface-alt); }
+
+  .presenter-item.active {
+    background: var(--accent-light);
+    border-left-color: var(--accent);
+  }
+
+  .presenter-item.graded .check-dot {
+    background: var(--accent);
+    color: var(--surface);
+  }
+
+  .check-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--score-unset);
+    color: var(--score-unset-text);
+    font-size: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+
+  .presenter-meta {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .presenter-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+
+  .presenter-score-preview {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .presenter-item .badge {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+  }
+
+  .badge-dup { background: var(--warn-bg); color: var(--warn); }
+  .badge-missing { background: var(--score-unset); color: var(--text-muted); }
+
+  #sidebar-actions {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: opacity 0.15s, background 0.15s;
+    text-align: center;
+    width: 100%;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { opacity: 0.88; }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+  }
+
+  .btn-secondary:hover { background: var(--surface-alt); }
+
+  .theme-toggle {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-muted);
+    transition: background 0.15s;
+  }
+
+  .theme-toggle:hover { background: var(--surface-alt); }
+
+  /* ── Main panel ── */
+  #main {
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+    padding: 32px 40px 48px;
+  }
+
+  #main-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Abstract header */
+  .abstract-eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .abstract-title {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.35;
+    text-wrap: balance;
+    margin-bottom: 10px;
+  }
+
+  .abstract-authors {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+
+  .abstract-inst {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-style: italic;
+    margin-bottom: 18px;
+  }
+
+  .flag-card {
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .flag-warn { background: var(--warn-bg); color: var(--warn); }
+  .flag-info { background: var(--accent-light); color: var(--accent-text); }
+
+  .flag-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  .abstract-body {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 15px;
+    line-height: 1.85;
+    color: var(--text);
+    margin-bottom: 28px;
+  }
+
+  /* ── Reviewer switcher ── */
+  .reviewer-switcher {
+    display: flex;
+    gap: 6px;
+    padding: 12px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .reviewer-tab {
+    flex: 1;
+    padding: 5px 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--score-unset);
+    color: var(--score-unset-text);
+    font-family: 'Inter', sans-serif;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+  }
+
+  .reviewer-tab:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .reviewer-tab.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  .reviewer-tab .tab-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    margin-right: 4px;
+    vertical-align: middle;
+    opacity: 0.5;
+  }
+
+  .reviewer-tab.done .tab-dot { opacity: 1; }
+
+  /* Reviewer badge in scoring panel */
+  .reviewer-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent-light);
+    color: var(--accent-text);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    margin-bottom: 20px;
+  }
+
+  /* Avg display in total bar */
+  .total-avg {
+    font-size: 11px;
+    opacity: 0.6;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  /* ── Scoring ── */
+  .section-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+
+  .criteria-grid {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .criterion-row {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .criterion-info {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .criterion-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+
+  .criterion-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.4;
+  }
+
+  .score-pills {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+  }
+
+  .score-pill {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--score-unset);
+    color: var(--score-unset-text);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .score-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .score-pill.selected {
+    background: var(--score-active);
+    color: var(--score-active-text);
+    border-color: var(--score-active);
+  }
+
+  /* Total bar */
+  .total-bar {
+    background: var(--total-bg);
+    color: var(--total-text);
+    border-radius: var(--radius);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .total-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    flex: 1;
+  }
+
+  .total-fraction {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 28px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .total-stars {
+    font-size: 16px;
+    letter-spacing: 2px;
+    color: var(--star);
+    min-width: 90px;
+    text-align: right;
+  }
+
+  /* Type toggle */
+  .type-toggle-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 24px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .type-toggle-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-right: 4px;
+  }
+
+  .type-pill {
+    padding: 6px 16px;
+    border-radius: 20px;
+    border: 2px solid var(--border);
+    background: var(--score-unset);
+    color: var(--score-unset-text);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .type-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+  }
+
+  .type-pill.selected {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+
+  /* Location */
+  .location-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .location-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  input.location-field {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  input.location-field:focus { border-color: var(--accent); }
+  input.location-field::placeholder { color: var(--text-muted); }
+
+  /* Notes */
+  .notes-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  textarea.notes-field {
+    width: 100%;
+    min-height: 110px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+    line-height: 1.6;
+    margin-bottom: 28px;
+  }
+
+  textarea.notes-field:focus { border-color: var(--accent); }
+  textarea.notes-field::placeholder { color: var(--text-muted); }
+
+  /* Nav buttons */
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .nav-row .btn { width: auto; flex: 1; }
+
+  /* Placeholder screen */
+  .placeholder-screen {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+
+  .placeholder-screen .ph-icon { font-size: 48px; margin-bottom: 16px; }
+  .placeholder-screen h3 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 20px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .placeholder-screen p { font-size: 13px; line-height: 1.7; max-width: 360px; margin: 0 auto; }
+
+  /* Export area */
+  #csv-fallback-area {
+    display: none;
+    margin-top: 12px;
+  }
+
+  #csv-fallback-area textarea {
+    width: 100%;
+    height: 120px;
+    font-size: 11px;
+    font-family: monospace;
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px;
+    color: var(--text);
+    resize: none;
+  }
+
+  #csv-fallback-area .help-text {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  /* Summary view */
+  #summary-view { display: none; }
+
+  #summary-view table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #summary-view th {
+    background: var(--surface-alt);
+    font-weight: 600;
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--border);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+
+  #summary-view td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  #summary-view tr:hover td { background: var(--surface-alt); }
+
+  .summary-score { font-weight: 600; color: var(--accent); }
+
+  #grade-view { display: block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav id="sidebar">
+  <div id="sidebar-header">
+    <h1>Abstract Grader</h1>
+    <div class="subtitle">CED Symposium · 2026</div>
+  </div>
+  <div class="reviewer-switcher" id="reviewer-switcher"></div>
+  <div id="progress-bar-wrap">
+    <div id="progress-label">
+      <span id="progress-text">0 of 30 graded</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div id="progress-track"><div id="progress-fill"></div></div>
+  </div>
+  <div id="presenter-list"></div>
+  <div id="sidebar-actions">
+    <button class="btn btn-secondary" onclick="toggleSummary()">📋 View Summary</button>
+    <button class="btn btn-primary" onclick="exportCSV()">⬇ Export CSV</button>
+    <div id="csv-fallback-area">
+      <p class="help-text">Copy the text below and paste into a .csv file:</p>
+      <textarea id="csv-text" readonly></textarea>
+    </div>
+  </div>
+</nav>
+
+<button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">☀︎</button>
+
+<main id="main">
+  <div id="main-inner">
+    <div id="grade-view">
+      <div id="abstract-panel"></div>
+    </div>
+    <div id="summary-view">
+      <div class="abstract-eyebrow">All Submissions</div>
+      <div class="abstract-title" style="font-size:20px; margin-bottom:20px;">Grading Summary</div>
+      <div style="overflow-x:auto;">
+        <table id="summary-table">
+          <thead>
+            <tr>
+              <th rowspan="2">#</th>
+              <th rowspan="2">Presenter</th>
+              <th rowspan="2">Format</th>
+              <th rowspan="2">Location</th>
+              <th colspan="5" style="text-align:center;border-bottom:1px solid var(--border)">Reviewer 1</th>
+              <th colspan="5" style="text-align:center;border-bottom:1px solid var(--border)">Reviewer 2</th>
+              <th colspan="5" style="text-align:center;border-bottom:1px solid var(--border)">Reviewer 3</th>
+              <th colspan="2" style="text-align:center;border-bottom:1px solid var(--border)">Average</th>
+            </tr>
+            <tr>
+              <th>CE</th><th>DES</th><th>IMP</th><th>TQ</th><th>Tot</th>
+              <th>CE</th><th>DES</th><th>IMP</th><th>TQ</th><th>Tot</th>
+              <th>CE</th><th>DES</th><th>IMP</th><th>TQ</th><th>Tot</th>
+              <th>Avg</th><th>Notes</th>
+            </tr>
+          </thead>
+          <tbody id="summary-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:20px;">
+        <button class="btn btn-secondary" style="width:auto; padding:8px 16px;" onclick="toggleSummary()">← Back to Grading</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const CRITERIA = [
+  { id: 'ce',  name: 'Community Engagement', desc: 'Depth of community involvement, partnership quality, reciprocity' },
+  { id: 'des', name: 'Design',               desc: 'Quality of design thinking, methodology, and creative approach' },
+  { id: 'imp', name: 'Impact / Implications', desc: 'Significance of outcomes, broader implications for the field' },
+  { id: 'tq',  name: 'Topic Quality',         desc: 'Relevance, clarity, originality, and scholarly contribution' },
+];
+
+const submissions = [
+  {
+    id: 1,
+    presenter: 'Dee Dee DeVuyst',
+    institution: 'Radian',
+    title: 'From Community Vision to Public Infrastructure: Power, Authorship, and Reciprocity in the 303 ArtWay',
+    abstract: 'This paper explores the 303 ArtWay project — a 3.2-mile urban trail connecting three under-resourced communities in Lakewood, Colorado. The presenter examines how a community-driven vision was translated into public infrastructure, grappling with questions of authorship, power, and reciprocity throughout a multi-year community engagement and design process. The project reflects on challenges of working across institutional and community boundaries, centering community expertise, and maintaining authentic partnership when professional design practice intersects with grassroots organizing.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 2,
+    presenter: 'Hala Barakat',
+    institution: 'Wayne State University',
+    title: 'A Space Within the Wall: The Role of the Architect in the Context of Occupation',
+    abstract: 'This abstract examines architectural practice in contexts of political occupation, drawing on fieldwork in Palestine. It questions how architects navigate complicity, responsibility, and advocacy when built environments are instruments of control. The presenter reflects on pedagogical approaches to teaching architecture in politically charged contexts and asks what ethical frameworks can guide community-engaged practice under occupation — engaging questions of spatial justice, decolonization, and the limits of professional neutrality.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 3,
+    presenter: 'Jade Polizzi',
+    institution: 'University of Colorado Boulder',
+    title: 'Learning by Doing: Knowledge Learned from a Baker\'s Dozen Design-Build Projects',
+    abstract: 'Drawing on 13 design-build projects spanning a decade, this presentation synthesizes lessons learned from hands-on community-engaged construction pedagogy. Topics include how students learn differently through material engagement, the challenges of community accountability in student-led projects, the role of failure as a pedagogical tool, and strategies for ensuring community benefit persists beyond the academic semester. The presenter reflects on evolving models of design-build studio education and the professional ethics these experiences cultivate.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 4,
+    presenter: 'Lucia Nucci',
+    institution: 'Università degli Studi Roma Tre',
+    title: 'After COVID-19 and in a Climate Change Era: What Are the Most Urgent Questions to Teach and Practice?',
+    abstract: 'This paper proposes a reorientation of architecture and design education in response to twin crises: the pandemic and accelerating climate change. The author argues that urgent questions — around care, resilience, informality, and ecological systems — are too rarely centered in design curricula. Drawing on Italian and European pedagogical examples, the presenter advocates for community-engaged approaches that embed ecological literacy and care ethics into design education as foundational, not supplementary, commitments.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 5,
+    presenter: 'Shalini Agrawal et al.',
+    institution: 'California State University, Sacramento',
+    title: 'Standards of Care: A Field Guide for Teaching Community-Engaged Design',
+    abstract: 'This presentation introduces "Standards of Care," a field guide developed collaboratively with community partners to articulate ethical standards for teaching community-engaged design. The guide addresses relationship building, power dynamics, student positioning, and institutional accountability. The authors share their process of co-creating the guide with community partners and students, and discuss how it has been piloted in design studios. The work proposes care — as both practice and ethic — as a core pedagogical principle for the field.',
+    flags: ['⚠ Submitter answered No to Q15 — work may be under concurrent review elsewhere. Please verify before acceptance.'],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 6,
+    presenter: 'Ninik Suhartini, Luke Hespanhol & Silvia Covarino',
+    institution: 'ITB / University of Sydney / GUC',
+    title: 'Global Cross-Cultural Experiential Learning Approaches to Advance SDG 11 in the Urban South',
+    abstract: 'This paper describes a cross-institutional, cross-cultural design studio linking Indonesia, Australia, and Egypt, focused on advancing SDG 11 (Sustainable Cities and Communities) through experiential learning in informal urban settlements of the Global South. The authors examine how students from different cultural and professional backgrounds collaborate on community-engaged design challenges, the tensions that arise in cross-cultural partnerships, and how these projects develop students\' capacity for culturally responsive practice.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 7,
+    presenter: 'Daniel Splaingard',
+    institution: 'Mississippi Valley State University',
+    title: 'Working with Work-Study: Building the MVSU Shelter Cottage',
+    abstract: 'This case study documents the design and construction of a small shelter cottage at Mississippi Valley State University (MVSU), a historically Black university, built using work-study labor. The presenter reflects on the pedagogical and institutional dimensions of involving work-study students in the design-build process, navigating procurement, campus administration, and the labor politics embedded in university construction. The project surfaces questions about who builds, who benefits, and what constitutes meaningful vocational and design education at HBCUs.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 8,
+    presenter: 'Ingrid Strong',
+    institution: 'Wentworth Institute of Technology',
+    title: 'Not Your Grandfather\'s Architecture School: Testing Global Pedagogies for Community Design',
+    abstract: 'This presentation examines efforts to transform a traditional architecture program into one centered on community-engaged global pedagogies. The author shares experiments from Wentworth\'s architecture curriculum: studios embedded in community partnerships, reciprocal exchange programs, and new assessment models that value community outcomes alongside conventional design metrics. The work interrogates what it means to prepare architects for socially responsible practice and challenges inherited assumptions about the purpose of professional design education.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 9,
+    presenter: 'Cathi Lynn Ho Schar',
+    institution: 'University of Hawaiʻi at Mānoa',
+    title: 'Hoʻokaulike: Toward a New Justice Ecology',
+    abstract: 'This paper introduces "Hoʻokaulike" — a Hawaiian concept meaning balance or equity — as a framework for a new justice ecology in community-engaged design. Drawing on Indigenous Hawaiian knowledge systems, the presenter argues for design practice that centers reciprocal relationships with land, community, and place as the foundation of just futures. The work critiques dominant sustainability frameworks as insufficient without Indigenous epistemologies, and proposes design education that integrates ancestral knowledge, cultural practice, and community accountability.',
+    flags: ['ℹ Submitted twice (two identical entries). Graded as one submission.'],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 10,
+    presenter: 'Manfredo Manfredini, Adrian Lo, Paul Jones & Paulo Silva',
+    institution: 'University of Auckland / ASPAC Alliance',
+    title: 'The Recursion of the "As If": ASPAC Perspectives on Community-Engaged Design and the Right to the Differential University',
+    abstract: 'This paper presents ASPAC Alliance\'s theoretical framework for community-engaged design pedagogy, centered on the concept of the "as if" — a speculative mode of design thinking that imagines alternative institutional structures and community relationships. The authors draw on Lefebvre\'s right to the city to propose a "right to the differential university," arguing that higher education institutions must radically reimagine their relationship to communities as a democratic imperative. Case studies from the Asia-Pacific region illustrate how this framework is enacted in studios and research.',
+    flags: ['ℹ Submitted twice — once as solo submission, once with full team. Full team version used here.'],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 11,
+    presenter: 'Ann Yoachim',
+    institution: 'Tulane University',
+    title: 'SproutHouse: A Community Engaged Design Build Studio Case Study',
+    abstract: 'This case study documents SproutHouse, a design-build project undertaken by Tulane architecture students in collaboration with a New Orleans community organization. The presenter reflects on the studio\'s approach to community engagement, the challenges of integrating student timelines with community needs, and the built outcomes and lasting relationships that resulted. The paper contributes to the growing literature on design-build pedagogy and examines how such projects can model ethical community partnership within the constraints of academic institutions.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 12,
+    presenter: 'Mark De La Torre',
+    institution: 'MIG, Inc.',
+    title: 'We Asked the Wrong Question: Learning to Listen from the Expert Designer to the Humble Practitioner',
+    abstract: 'This reflective practice paper examines a professional designer\'s evolution from expert-centered practice to community-centered humility. Drawing on two decades of public engagement work, the presenter narrates specific project moments where conventional design expertise failed and listening became the essential skill. The paper proposes a framework of "humble practice" — positioning the designer as a facilitator and co-learner rather than an authority — and examines how professional design education can cultivate this disposition from early in students\' training.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 13,
+    presenter: 'Aziza Cyamani & Emmanuel Mutabazi',
+    institution: 'Wentworth Institute of Technology / University of Rwanda',
+    title: 'Rwandan Craft Practices in Industrial Design Education',
+    abstract: 'This paper documents a cross-institutional collaboration integrating Rwandan artisan craft traditions into industrial design curricula. Drawing on partnership between Wentworth Institute and the University of Rwanda, the authors explore how Indigenous craft knowledge can transform design education — challenging Western-centric models of industrial design, centering local material and technical knowledge, and creating pathways for community economic development. The work reflects on decolonizing design pedagogy through craft-based community engagement.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 14,
+    presenter: 'Yasushi Ishida, Ho Kyung Lee & Felipe Igualt',
+    institution: 'University of Hawaiʻi at Mānoa',
+    title: 'Making Possible Futures Visible: A Community-Engaged Design Studio for Lahaina\'s Recovery',
+    abstract: 'This paper presents a design studio developed in response to the 2023 Lahaina wildfire — one of the deadliest in US history — as a model for community-engaged disaster recovery design education. The studio engaged Lahaina residents and Native Hawaiian community organizations in envisioning futures for the destroyed town, using participatory design methods to center community agency in recovery planning. The authors reflect on the ethics of design intervention in disaster contexts, the challenges of working with grieving communities, and the role of design imagination in healing.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 15,
+    presenter: 'Unknown Presenter',
+    institution: '(File not available)',
+    title: 'Submission R_7OrcJ09wtnRrzoN',
+    abstract: '',
+    flags: ['⚠ This PDF was not included in the uploaded files. Abstract content unavailable — please review the original submission separately.'],
+    missing: true,
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 16,
+    presenter: 'Robert Gaarder',
+    institution: 'Independent (Leadership Coach)',
+    title: 'Designing Across Cultures: The Role of Flexibility and Emotional Intelligence',
+    abstract: 'This presentation explores the role of emotional intelligence — specifically the competency of flexibility — in working effectively across cultures. The ability to adapt to unfamiliar cultural environments is commonly described as Cultural Intelligence (CQ). Drawing on behavioral science and emotional intelligence, the presentation illustrates how flexibility enables individuals to navigate ambiguity, challenge assumptions, adapt behavior, and build trust across cultural boundaries. The presentation introduces the Flexibility Cycle, a practical framework for responding constructively to unfamiliar situations, along with five evidence-informed practices for strengthening cross-cultural adaptability. The work argues that emotional intelligence is not simply about improving relationships — it is a design competency that directly shapes communication, collaboration, and project success in international settings.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 17,
+    presenter: 'China Scherz, George Mpanga & Sarah Namirembe',
+    institution: 'University of Notre Dame',
+    title: 'New Models for Collaborative Ethnographic Research and Publishing',
+    abstract: 'George Mpanga, Sarah Namirembe, and China Scherz share lessons learned from an NSF-funded collaborative ethnographic research project on alcohol and alternative approaches to substance use disorder recovery in Uganda. Carried out over four years, the team experimented with models for collaborative ethnographic research and publishing. Historically, research collaborations have often been unspoken in anthropology, and single-authored publications remain the norm. This has been slowly changing, and their efforts to combine virtual and in-person methods for collecting, analyzing, and publishing ethnographic data offer insights useful to groups within and outside of anthropology. The project is located in Kampala, Uganda, and is grounded in medical anthropology.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 18,
+    presenter: 'Hala Barakat',
+    institution: 'Washington State University',
+    title: 'Before the People Came: The Shift from Empathy Words to Design Action on Land-Grant University Campuses',
+    abstract: 'This case examines "Space of Acknowledgment," a beginning design studio at Washington State University in which students design spatial interventions for the Nimiipuu Nez Percé community on a land-grant campus. Students collectively read Linda Tuhiwai Smith\'s Decolonizing Methodologies, examining how history has been falsely structured and presented on behalf of tribal nations, and Mike Monteiro\'s argument that what designers choose not to design is as political as what they do. Through in-class discussion, collage making, writing, and three-dimensional model building, students move through four scales: the city as the place of Indigenous land, the territory as the boundary of lost space, the landscape as the connection between structures built and the land, and the idea as the purpose of cognizance in preserving cultures. Students are not asked to speak for the Nimiipuu Nez Percé — they are asked to build the platform from which the community tells its own story.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 19,
+    presenter: 'Andrew Hart',
+    institution: 'Thomas Jefferson University',
+    title: 'Drawing Out Dialogue: How Students Amplify Community Narratives and Futures — Case Study: JADE Studio, Philadelphia Chinatown',
+    abstract: 'This proposal examines the role of architectural education in supporting community-engaged practice by exploring how students can contribute to communities not as experts or problem-solvers, but as amplifiers of community knowledge. The JADE Studio (Justice Alliance for Design Education) — a consortium curriculum at Thomas Jefferson University — held a fall 2025 studio partnering with Asian Americans United and Chinatown community stakeholders. The studio proposes a model of "amplification pedagogy," where students learn to listen, interpret, and visually communicate community priorities while recognizing the limits of their own expertise. The semester culminated in a public exhibition of student work created with community partners, intended to prompt conversation, reflection, and future imagining rather than function as a traditional academic review.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 20,
+    presenter: 'Scott Gerald Shall',
+    institution: 'Lawrence Technological University',
+    title: 'What the Prompt Missed: AI, Culture, and Community Authorship in Design Education',
+    abstract: 'This paper examines a participatory project transforming a 3,500-square-foot church basement in Detroit\'s Jefferson-Chalmers neighborhood into a community hub. The design team partnered with local nonprofits, community activists, and neighborhood stakeholders, positioning residents not as consultants but as primary spatial authors. AI image generation (MidJourney) was used to create visualizations from community survey responses, then shared back with the community for critique. A systematic comparison of AI outputs against original survey responses revealed that image generation reliably failed to represent cultural memory, social relationship, and the texture of everyday life — not incidental omissions, but a structural limitation in how AI interprets qualitative, culturally specific community knowledge, defaulting toward professional design conventions. The paper treats these gaps as data, proposing new prompting strategies and treating AI failure as diagnostic of cultural threshold.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 21,
+    presenter: 'Dean Bacalzo',
+    institution: 'University of Colorado at Boulder',
+    title: 'From Ocean Currents to Desert Silence: Developing Trust in Design Education and Collaboration',
+    abstract: 'This "Talk Story" session explores the differences and tensions between Western design timelines and the necessary development of trust required in Indigenous classrooms. Drawing on firsthand experiences teaching Hawai\'i-born and Native American students in a compressed six-week format, this session challenges the assumption that "culture" is a singular and familiar context. While Hawaiian students engaged the curriculum with near-immediate openness, Native American students from the Upward Bound program at CU-Boulder met the presenter with a tentative and protective attitude. The session reframes silence not as a barrier, but as a cultural and ethical boundary that requires sensitivity, humility, reflective thought, and honest listening — and asks when institutional timelines do not allow for slow cultivation of cultural understanding, whether ethical design is still possible.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 22,
+    presenter: 'Menna Agha',
+    institution: 'Carleton University (Architecture Action Lab)',
+    title: 'The Emotional Mandate of Architecture: Mourning, Trust, and Solidarity in Design-Build Praxis',
+    abstract: 'This paper reflects on five years of design-build praxis within the Architecture Action Lab at Carleton University, a community-engaged research and design laboratory rooted in principles of abolition, repair, and community solidarity. Three Ottawa projects are examined as defining moments in three communities: 1700 SPOT in Russell Heights (emerged through a two-year collaboration; became a work of mourning after a community member was killed during construction), the Vanier HUB (built on a former parking lot through sustained consultation and co-design, becoming a permanent piece of community infrastructure), and Public Foods in Centretown (a community refrigerator and pantry foregrounds architecture as a work of solidarity). Together, the projects argue that emotional labour — mourning, trust, solidarity — is not an additional dimension of architectural practice, but one of its fundamental materials.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 23,
+    presenter: 'Sameena Sitabkhan',
+    institution: 'Academy of Art University',
+    title: 'Reciprocal by Design: A Reimagined Model for an Engaged Architecture Education',
+    abstract: 'The B.lab Mandela House Community Room is a fifth-year design-build thesis studio in the undergraduate architecture program at Academy of Art University San Francisco. Over two semesters, students partnered with formerly unhoused residents of Mandela House, a pilot transitional housing project in West Oakland, designing and constructing a bespoke interior for the community room. The studio inverted the conventional thesis model: rather than individual research and solitary design development, the course was organized as a "flipped" thesis — students led outreach, facilitation, and construction, learning through direct accountability to a community partner. Skills emphasized include conversation, negotiation, budgeting, materiality, compromise, and the physical labor of building. Two participatory design sessions with residents shaped the final scheme, giving residents real authorship over outcomes rather than merely consultative input.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 24,
+    presenter: 'Joaquín T. Argüello de Jesús',
+    institution: 'Compostela Community & Family Cultural Institute / University of New Mexico',
+    title: 'Community Self-Development Through Transdisciplinary Indigenous Evaluation Framework',
+    abstract: 'This workshop offers an praxis learning process based on the American Indians and Alaskan Natives (AIAN) efforts to reverse devastating historical educational practices through a common focus on customs, languages, resources, and lands through commitments to maintain, restore, and preserve community values, wisdom, traditional pedagogies, and knowledge. The Indigenous Evaluation Framework asks how Black, Indigenous, and People of Color communities can be supported by long-standing Indigenous practice. Through practice, participants learn cultural and placed-based knowledge practices toward exploring Indigenous pedagogies offering self-capacity development, developing respectful approaches in support of community evaluation needs grounded in core tribal and Indigenous values that correlate with participant community reality and needed accountability.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 25,
+    presenter: 'Samia Rab Kirchner',
+    institution: 'Morgan State University',
+    title: 'Morgannale: Designing and Building an Infrastructure for CommuniVersity',
+    abstract: 'Morgannale is an exhibition of Morgan State University\'s architecture and art students\' work in the Park Heights neighborhood of Baltimore City, aimed at making the University relevant to communities (CommuniVersity). Funded by a Mellon Foundation Humanities in Place Grant, students co-designed and co-fabricated the Morgannale Exhibition Infrastructure on-site in partnership with Plantation Park Heights Urban Farmers (PPHUF). The interactive exhibition began in October 2024, displaying architectural projects that addressed issues identified by the PPHUF community. In Spring 2025, art students identified placement sites for farm logo and follies designs — historically, decorative objects incorporated into public parks symbolizing various virtues. The Morgannale has created a CommuniVersity connecting Park Heights residents with architecture and art students and faculty through programming around the exhibitions, co-visioning place-keeping and placemaking designs for urban open spaces.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 26,
+    presenter: 'Hansel Bauman',
+    institution: 'Hansel Bauman Architecture + Planning',
+    title: 'Making Space: Lessons on Engagement from the Deaf Experience',
+    abstract: 'This presentation draws on two Participatory Action Research (PAR) case studies — the DeafSpace Project at Gallaudet University (2006–2019) and MASS Design Group\'s Deaf and Disability Design Lab — to examine the ethical, theoretical, and practical challenges of designing and constructing space for marginalized communities through mainstream project delivery. The DeafSpace Project resulted in the DeafSpace Design Guidelines (2010), synthesizing student-generated solutions and industry best practices into performance-based recommendations for space planning and design supporting visual communication for deaf signers. The project\'s legacy raises questions about architecture as a force for change and cultural agency, the balance of power through reciprocity and curiosity rather than "design empathy," and customizing project delivery to fit users\' culture. Case studies address challenges, failures, and successes spanning a full Project Delivery Cycle across four phases: Reflection, Translation, Implementation, and Evolution.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 27,
+    presenter: 'Andrew Hart & Grace Ong Yan',
+    institution: 'Thomas Jefferson University',
+    title: 'In Their Own Words: Possibilities and Limits Building a Community-Engaged Design Process through Redemption',
+    abstract: 'This abstract proposes a case study of Redemption, a permanent public artwork in Huntington, New York, examining the challenges and limitations of a community-engaged design process. The project was commissioned through a Town of Huntington competition seeking a public artwork celebrating the history and contributions of African Americans. The African American Historic Designation Council had documented generations of African American life in Huntington. The design team extended this research through work with local experts, community leaders, and residents, followed by online meetings involving community elders. Rather than asking residents to respond to a predetermined design, the team invited them to contribute words, memories, hopes, and meanings — receiving substantial community input. Not every contribution could be included in the physical work. The case-based workshop asks participants to emulate the engagement process, including the editing and friction of making decisions and negotiations, and raises questions about designer responsibility after participation generates more content than a project can physically accommodate.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 28,
+    presenter: 'Matthew Bernstine',
+    institution: 'Washington University in St. Louis',
+    title: 'Community Artifacts: Designing Local History with Sumner High School Students',
+    abstract: 'This case study discusses the design process, community goals, and learning outcomes of guiding high school interns to create a historically informed set of community artifacts about local Black history: puzzles, playing cards, and a commemorative soda can. The Sumner StudioLab was launched in 2022 as a partnership between Washington University\'s Sam Fox School of Design & Visual Arts and the Center for the Humanities, the nonprofit 4theVille, and other community partners. Based in North St. Louis, the Sumner StudioLab is a community hub that hosts workshops, public events, neighborhood meetings, and a paid high school internship program. 6–8 students join as paid interns, meeting weekly with WashU faculty and graduate assistants, as well as community leaders. Guided by graduate students and faculty, high school interns design community artifacts intended to engage their peers and neighbors in local history, celebrating Sumner\'s past and re-imagining Sumner\'s future.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 29,
+    presenter: 'David J Isern',
+    institution: 'University of Illinois Urbana-Champaign',
+    title: 'When Relationships Become Architecture: Belonging and the Making of a Bora Maloca',
+    abstract: 'This paper examines the design and construction of a maloca with a Bora community near Iquitos, Peru. Among the Bora, the maloca is not simply an Amazonian communal longhouse — it is a place of gathering, teaching, authority, and ceremony, a sacred space connecting people with territory, ancestors, and spirit. Making the maloca required something more demanding than conventional community-engaged design: participants had to be accepted into a relationship with the community, not as collaborators, contributors, or innovators, but as people given a place among them and made responsible for the work. Belonging became the project\'s core. As an architectural condition, however, belonging cannot be claimed, scheduled, or produced by a design method — it can only be conferred by others and accepted by oneself. The paper proposes five questions for community-engaged design education centered on relational accountability, asking whether presence preceded proposal, whether permission preceded interpretation, and whether answerability continued after departure.',
+    flags: [],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+  {
+    id: 30,
+    presenter: 'Dee Dee DeVuyst (2nd submission)',
+    institution: 'Radian',
+    title: 'From Community Vision to Public Infrastructure: Power, Authorship, and Reciprocity in the 303 ArtWay',
+    abstract: 'Duplicate of abstract #1. Same title and content submitted a second time.',
+    flags: ['⚠ DUPLICATE — Identical submission to abstract #1 (Dee Dee DeVuyst, Radian). Grade only once; disregard this entry.'],
+    scores: { ce: 0, des: 0, imp: 0, tq: 0 },
+    notes: ''
+  },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+let current = 0;
+let showingSummary = false;
+let theme = 'system';
+let currentGrader = 0;
+
+const REVIEWER_NAMES = ['Reviewer 1', 'Reviewer 2', 'Reviewer 3'];
+
+// ── Render helpers ────────────────────────────────────────────────────────────
+function graderData(sub, g) {
+  return sub.graders[g];
+}
+
+function isGraded(sub, g) {
+  const gi = g !== undefined ? g : currentGrader;
+  const s = sub.graders[gi].scores;
+  return s.ce > 0 && s.des > 0 && s.imp > 0 && s.tq > 0;
+}
+
+function totalScore(sub, g) {
+  const gi = g !== undefined ? g : currentGrader;
+  const s = sub.graders[gi].scores;
+  return s.ce + s.des + s.imp + s.tq;
+}
+
+function avgTotal(sub) {
+  let count = 0; let sum = 0;
+  for (let g = 0; g < 3; g++) {
+    if (isGraded(sub, g)) { sum += totalScore(sub, g); count++; }
+  }
+  return count > 0 ? (sum / count).toFixed(1) : null;
+}
+
+function allNotes(sub) {
+  return sub.graders.map((g, i) => g.notes ? `R${i+1}: ${g.notes}` : '').filter(Boolean).join(' | ');
+}
+
+function stars(score, max = 20) {
+  if (score === 0) return '';
+  const pct = score / max;
+  if (pct >= 0.9) return '★★★★★';
+  if (pct >= 0.75) return '★★★★☆';
+  if (pct >= 0.6) return '★★★☆☆';
+  if (pct >= 0.4) return '★★☆☆☆';
+  return '★☆☆☆☆';
+}
+
+function renderSidebar() {
+  // Reviewer switcher
+  const switcher = document.getElementById('reviewer-switcher');
+  switcher.innerHTML = REVIEWER_NAMES.map((name, g) => {
+    const done = submissions.filter(s => isGraded(s, g)).length;
+    const isDone = done > 0;
+    return `<button class="reviewer-tab${g === currentGrader ? ' active' : ''}${isDone ? ' done' : ''}"
+      onclick="switchGrader(${g})">
+      <span class="tab-dot"></span>${name.replace('Reviewer ', 'R')}
+    </button>`;
+  }).join('');
+
+  const list = document.getElementById('presenter-list');
+  const graded = submissions.filter(s => isGraded(s)).length;
+  const pct = Math.round((graded / submissions.length) * 100);
+  document.getElementById('progress-text').textContent = `${graded} of ${submissions.length} graded`;
+  document.getElementById('progress-pct').textContent = `${pct}%`;
+  document.getElementById('progress-fill').style.width = `${pct}%`;
+
+  list.innerHTML = submissions.map((sub, i) => {
+    const g = isGraded(sub);
+    const tot = totalScore(sub);
+    const avg = avgTotal(sub);
+    const activeClass = i === current && !showingSummary ? ' active' : '';
+    const gradedClass = g ? ' graded' : '';
+    let badge = '';
+    if (sub.missing) badge = '<span class="badge badge-missing">?</span>';
+    else if (sub.flags.some(f => f.includes('twice'))) badge = '<span class="badge badge-dup">DUP</span>';
+
+    let preview;
+    if (sub.missing) preview = 'No file';
+    else if (g) preview = `${tot}/20${avg ? ` · avg ${avg}` : ''}`;
+    else preview = 'Not graded';
+
+    return `<div class="presenter-item${activeClass}${gradedClass}" onclick="selectSubmission(${i})">
+      <div class="check-dot">${g ? '✓' : ''}</div>
+      <div class="presenter-meta">
+        <div class="presenter-name">${sub.presenter}</div>
+        <div class="presenter-score-preview">${preview}</div>
+      </div>
+      ${badge}
+    </div>`;
+  }).join('');
+}
+
+function renderMain() {
+  if (showingSummary) return;
+  const sub = submissions[current];
+  const panel = document.getElementById('abstract-panel');
+
+  let flagsHtml = sub.flags.map(f => {
+    const isWarn = f.startsWith('⚠');
+    return `<div class="flag-card ${isWarn ? 'flag-warn' : 'flag-info'}">
+      <span class="flag-icon">${isWarn ? '⚠' : 'ℹ'}</span>
+      <span>${f.replace(/^[⚠ℹ]\s?/, '')}</span>
+    </div>`;
+  }).join('');
+
+  let abstractSection = '';
+  if (sub.missing) {
+    abstractSection = `<div class="placeholder-screen">
+      <div class="ph-icon">📄</div>
+      <h3>File Not Available</h3>
+      <p>The PDF for this submission was not included in the uploaded files. Please review the original submission separately and record your scores below.</p>
+    </div>`;
+  } else {
+    abstractSection = `<div class="abstract-body">${sub.abstract}</div>`;
+  }
+
+  const gd = sub.graders[currentGrader];
+  const tot = totalScore(sub);
+  const allSet = isGraded(sub);
+  const avg = avgTotal(sub);
+  const prevDisabled = current === 0 ? 'style="opacity:0.4;pointer-events:none"' : '';
+  const nextDisabled = current === submissions.length - 1 ? 'style="opacity:0.4;pointer-events:none"' : '';
+
+  panel.innerHTML = `
+    <div class="abstract-eyebrow">Submission ${sub.id} of ${submissions.length}</div>
+    <div class="abstract-title">${sub.title}</div>
+    <div class="abstract-authors">${sub.presenter}</div>
+    <div class="abstract-inst">${sub.institution}</div>
+    ${flagsHtml}
+    ${abstractSection}
+
+    <div class="type-toggle-row">
+      <span class="type-toggle-label">Format</span>
+      <button class="type-pill ${sub.type === 'case' ? 'selected' : ''}"
+              onclick="setType(${current}, 'case')">Case Study</button>
+      <button class="type-pill ${sub.type === 'deepdive' ? 'selected' : ''}"
+              onclick="setType(${current}, 'deepdive')">Deep Dive</button>
+    </div>
+
+    <div class="location-row">
+      <span class="location-label">📍 Location</span>
+      <input class="location-field" type="text"
+             placeholder="City, Country"
+             value="${sub.location || ''}"
+             oninput="setLocation(${current}, this.value)">
+    </div>
+
+    <div class="reviewer-badge">
+      ✎ ${REVIEWER_NAMES[currentGrader]}
+    </div>
+
+    <div class="section-label">Scoring Criteria</div>
+    <div class="criteria-grid">
+      ${CRITERIA.map(c => `
+        <div class="criterion-row">
+          <div class="criterion-info">
+            <div class="criterion-name">${c.name}</div>
+            <div class="criterion-desc">${c.desc}</div>
+          </div>
+          <div class="score-pills" id="pills-${c.id}">
+            ${[1,2,3,4,5].map(n => `
+              <button class="score-pill ${gd.scores[c.id] === n ? 'selected' : ''}"
+                      onclick="setScore(${current}, '${c.id}', ${n})"
+                      aria-label="Score ${n} for ${c.name}">
+                ${n}
+              </button>`).join('')}
+          </div>
+        </div>`).join('')}
+    </div>
+
+    <div class="total-bar">
+      <div class="total-label">
+        Total Score
+        ${avg ? `<div class="total-avg">avg all reviewers: ${avg}/20</div>` : ''}
+      </div>
+      <div class="total-stars" id="stars-display">${allSet ? stars(tot) : ''}</div>
+      <div class="total-fraction" id="total-display">${allSet ? tot : '—'}<span style="font-size:16px;opacity:0.5"> /20</span></div>
+    </div>
+
+    <label class="notes-label" for="notes-field">Notes — ${REVIEWER_NAMES[currentGrader]}</label>
+    <textarea class="notes-field" id="notes-field"
+              placeholder="Overall impressions, strengths, concerns, recommendations…"
+              oninput="setNotes(${current}, this.value)">${gd.notes}</textarea>
+
+    <div class="nav-row">
+      <button class="btn btn-secondary" ${prevDisabled} onclick="navigate(-1)">← Previous</button>
+      <button class="btn btn-primary" ${nextDisabled} onclick="navigate(1)">Next →</button>
+    </div>
+  `;
+}
+
+function renderSummaryTable() {
+  const tbody = document.getElementById('summary-tbody');
+  tbody.innerHTML = submissions.map((sub, i) => {
+    const graderCells = sub.graders.map((gd, g) => {
+      const s = gd.scores;
+      const graded = isGraded(sub, g);
+      const tot = graded ? totalScore(sub, g) : '–';
+      return `<td class="summary-score">${s.ce || '–'}</td>
+              <td class="summary-score">${s.des || '–'}</td>
+              <td class="summary-score">${s.imp || '–'}</td>
+              <td class="summary-score">${s.tq || '–'}</td>
+              <td style="font-weight:700;color:var(--accent)">${tot}</td>`;
+    }).join('');
+    const avg = avgTotal(sub);
+    const notes = allNotes(sub);
+    return `<tr>
+      <td>${sub.id}</td>
+      <td>
+        <div style="font-weight:500">${sub.presenter}</div>
+        <div style="color:var(--text-muted);font-size:11px">${sub.institution}</div>
+      </td>
+      <td style="font-size:11px;white-space:nowrap">${sub.type === 'case' ? '📋 Case' : sub.type === 'deepdive' ? '🔍 Deep Dive' : '–'}</td>
+      <td style="font-size:11px;color:var(--text-muted)">${sub.location || '–'}</td>
+      ${graderCells}
+      <td style="font-weight:700;color:var(--accent)">${avg ? avg : '–'}</td>
+      <td style="color:var(--text-muted);font-size:11px;max-width:180px">${notes ? notes.substring(0, 100) + (notes.length > 100 ? '…' : '') : ''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────────
+function selectSubmission(i) {
+  if (showingSummary) toggleSummary();
+  current = i;
+  renderSidebar();
+  renderMain();
+  document.getElementById('main').scrollTop = 0;
+}
+
+function switchGrader(g) {
+  currentGrader = g;
+  renderSidebar();
+  renderMain();
+}
+
+function setScore(idx, criterion, value) {
+  submissions[idx].graders[currentGrader].scores[criterion] = value;
+  renderSidebar();
+  renderMain();
+}
+
+function setNotes(idx, value) {
+  submissions[idx].graders[currentGrader].notes = value;
+}
+
+function setType(idx, value) {
+  submissions[idx].type = submissions[idx].type === value ? '' : value;
+  renderMain();
+}
+
+function setLocation(idx, value) {
+  submissions[idx].location = value;
+}
+
+function navigate(dir) {
+  const next = current + dir;
+  if (next >= 0 && next < submissions.length) {
+    selectSubmission(next);
+  }
+}
+
+function toggleSummary() {
+  showingSummary = !showingSummary;
+  document.getElementById('grade-view').style.display = showingSummary ? 'none' : 'block';
+  document.getElementById('summary-view').style.display = showingSummary ? 'block' : 'none';
+  if (showingSummary) renderSummaryTable();
+  renderSidebar();
+}
+
+function exportCSV() {
+  const gCols = ['CE','DES','IMP','TQ','Total'];
+  const headers = [
+    '#','Presenter','Institution','Title','Format','Location',
+    ...gCols.map(c => `R1_${c}`),
+    ...gCols.map(c => `R2_${c}`),
+    ...gCols.map(c => `R3_${c}`),
+    'Avg_Total',
+    'R1_Notes','R2_Notes','R3_Notes'
+  ];
+  const rows = submissions.map(sub => {
+    const typeLabel = sub.type === 'case' ? 'Case Study' : sub.type === 'deepdive' ? 'Deep Dive' : '';
+    const perGrader = sub.graders.map((gd, g) => {
+      const s = gd.scores;
+      const tot = isGraded(sub, g) ? totalScore(sub, g) : '';
+      return [s.ce||'', s.des||'', s.imp||'', s.tq||'', tot];
+    }).flat();
+    const avg = avgTotal(sub) || '';
+    return [
+      sub.id,
+      sub.presenter,
+      sub.institution,
+      sub.title,
+      typeLabel,
+      sub.location || '',
+      ...perGrader,
+      avg,
+      sub.graders[0].notes,
+      sub.graders[1].notes,
+      sub.graders[2].notes,
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+  });
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'abstract_grades_CED2026.csv';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+
+  // Fallback textarea
+  const fa = document.getElementById('csv-fallback-area');
+  document.getElementById('csv-text').value = csv;
+  fa.style.display = 'block';
+}
+
+function toggleTheme() {
+  const root = document.documentElement;
+  if (theme === 'system' || theme === 'light') {
+    root.setAttribute('data-theme', 'dark');
+    theme = 'dark';
+    document.querySelector('.theme-toggle').textContent = '☾';
+  } else {
+    root.setAttribute('data-theme', 'light');
+    theme = 'light';
+    document.querySelector('.theme-toggle').textContent = '☀︎';
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+const EMPTY_GRADER = () => ({ scores: { ce: 0, des: 0, imp: 0, tq: 0 }, notes: '' });
+
+submissions.forEach(s => {
+  if (!('type' in s)) s.type = '';
+  if (!('location' in s)) s.location = '';
+  if (!('graders' in s)) s.graders = [EMPTY_GRADER(), EMPTY_GRADER(), EMPTY_GRADER()];
+  // Migrate legacy single-grader data if present
+  if ('scores' in s && s.graders[0].scores.ce === 0) {
+    s.graders[0].scores = { ...s.scores };
+    if ('notes' in s) s.graders[0].notes = s.notes || '';
+  }
+  delete s.scores;
+  delete s.notes;
+});
+renderSidebar();
+renderMain();
+</script>
+</body>
+</html>
