@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Illicit flows in Costa Rica</title>
+<meta name="description" content="Global connections, illicit flows and seizures in Costa Rica. Authors: Annette Idler, Jota Samper, Lamis Saleh, Hernán Manrique.">
+<meta property="og:title" content="Illicit flows in Costa Rica">
+<meta property="og:description" content="Global Connections, Illicit Flows, Seizures — interactive maps.">
+<meta property="og:image" content="https://www.arcgis.com/sharing/rest/content/items/602d803bb6fe4a6cb71e99c062ba64e6/resources/bo55YXSpbEUuzIebck75_.jpeg">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+/* =========================================================
+   THEME — change these to restyle the whole page
+   ========================================================= */
+:root{
+  /* All backgrounds are shades of Oxford blue (#002147) */
+  --header-bg:     #0b1f45;   /* top bar with logos (original StoryMap blue) */
+  --bg:            #001a38;   /* page background */
+  --stage-bg:      #001c3d;   /* behind the maps */
+  --surface:       #002147;   /* narrative panels (true Oxford blue) */
+  --surface-2:     #0a2d57;   /* tip cards / badges */
+  --surface-3:     #143866;   /* hover */
+  --text:          #eef1f5;
+  --text-muted:    #a9b6c9;
+  --accent:        #d9dde3;   /* light grey: rules, active nav */
+  --accent-soft:   rgba(217,221,227,.08);
+  --border:        #1c3a63;
+  --line:          #4a6489;   /* dashed route line, tip borders */
+
+  --font-display:  "Source Serif 4", Georgia, serif;
+  --font-body:     "Inter", system-ui, -apple-system, Segoe UI, sans-serif;
+
+  --header-h:      64px;
+  --nav-h:         48px;
+  --panel-w:       34%;       /* width of the text column in map sections */
+  --radius:        6px;
+}
+
+/* =========================================================
+   BASE
+   ========================================================= */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:calc(var(--header-h) + var(--nav-h))}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:17px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--text)}
+img{max-width:100%;display:block}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;line-height:1.15;margin:0 0 .6em}
+p{margin:0 0 1em}
+.small{font-size:.82rem;color:var(--text-muted)}
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+.site-header{
+  position:fixed;inset:0 0 auto 0;height:var(--header-h);z-index:50;
+  display:flex;align-items:center;gap:20px;padding:0 24px;
+  background:var(--header-bg);border-bottom:1px solid rgba(255,255,255,.08);
+}
+.site-header .logo img{height:40px;width:auto}
+.site-header .title{font-weight:500;font-size:1rem;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* =========================================================
+   COVER
+   ========================================================= */
+.cover{
+  position:relative;min-height:100vh;display:flex;align-items:center;
+  padding:calc(var(--header-h) + 40px) 6vw 80px;
+  background:#222 url("https://www.arcgis.com/sharing/rest/content/items/602d803bb6fe4a6cb71e99c062ba64e6/resources/bo55YXSpbEUuzIebck75_.jpeg") center/cover no-repeat;
+}
+.cover::before{
+  content:"";position:absolute;inset:0;
+  /* neutral dark shade so the black-and-white photo stays untinted */
+  background:linear-gradient(90deg,rgba(0,0,0,.75) 0%,rgba(0,0,0,.45) 45%,rgba(0,0,0,.05) 100%);
+}
+.cover-inner{position:relative;max-width:640px}
+.cover h1{font-size:clamp(3rem,7vw,5.5rem);margin-bottom:.25em}
+.cover .summary{font-size:clamp(1.25rem,2.4vw,1.75rem);line-height:1.35;margin-bottom:1.5em;color:#f2f2f2}
+.cover .byline{font-weight:600;margin:0}
+.cover .date{color:var(--text-muted);margin:0}
+.scroll-cue{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);color:#fff;opacity:.8;font-size:.8rem;letter-spacing:.12em;text-transform:uppercase;text-decoration:none}
+.scroll-cue::after{content:"";display:block;width:1px;height:36px;background:currentColor;margin:8px auto 0;animation:cue 1.8s infinite}
+@keyframes cue{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+/* =========================================================
+   SECTION NAV
+   ========================================================= */
+.section-nav{
+  position:sticky;top:var(--header-h);z-index:40;height:var(--nav-h);
+  background:rgba(0,26,56,.95);backdrop-filter:blur(8px);border-bottom:1px solid var(--border);
+}
+.section-nav ul{list-style:none;margin:0 auto;padding:0 16px;height:100%;display:flex;gap:4px;justify-content:center;overflow-x:auto;scrollbar-width:none}
+.section-nav li{flex:none}
+.section-nav a{display:flex;align-items:center;height:var(--nav-h);padding:0 14px;color:var(--text-muted);text-decoration:none;font-size:.88rem;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap}
+.section-nav a:hover{color:var(--text)}
+.section-nav a.active{color:var(--text);border-bottom-color:var(--accent)}
+
+/* =========================================================
+   MAP INDEX (clickable route of the five maps)
+   ========================================================= */
+.map-index{max-width:960px;margin:0 auto;padding:56px 24px 40px}
+.map-index .intro{max-width:62ch;margin:0 auto 32px;text-align:center;color:var(--text-muted);font-size:.98rem}
+.map-index .intro strong{color:var(--text);font-weight:500}
+.route{position:relative;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.route::before{content:"";position:absolute;left:10%;right:10%;top:46px;border-top:2px dashed var(--line);z-index:0}
+.route li{position:relative;z-index:1;min-width:0}
+.route a{display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px;padding:6px 4px 12px;border-radius:10px;text-decoration:none;color:var(--text);transition:background .2s}
+.badge{width:92px;height:92px;border-radius:50%;background:var(--surface-2);border:1.5px solid var(--line);display:grid;place-items:center;position:relative;transition:border-color .2s,transform .2s}
+.badge svg{width:46px;height:46px;stroke:#f2f2f2;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge svg .flow{stroke:#9aa3b2}
+.badge svg .fill{fill:var(--accent-soft)}
+.num{position:absolute;top:-2px;right:2px;font-size:11px;font-weight:600;background:#f2f2f2;color:#002147;border-radius:20px;padding:1px 7px}
+.route h4{font-family:var(--font-display);font-size:1rem;line-height:1.25;margin:0}
+.route p{margin:0;font-size:.8rem;line-height:1.4;color:var(--text-muted);max-width:24ch}
+.route a:hover{background:var(--accent-soft)}
+.route a:hover .badge{border-color:#f2f2f2;transform:translateY(-3px)}
+.route li.all .badge{border-width:2.5px;border-color:#f2f2f2}
+
+/* =========================================================
+   SIDECAR (docked panel, sticky media)
+   ========================================================= */
+.sidecar{display:grid;grid-template-columns:var(--panel-w) 1fr;border-top:1px solid var(--border)}
+.sidecar .narrative{background:var(--surface);border-right:1px solid var(--border)}
+.slide-text{
+  min-height:calc(100vh - var(--header-h) - var(--nav-h));
+  padding:12vh 36px;display:flex;flex-direction:column;justify-content:center;
+  border-bottom:1px solid var(--border);opacity:.35;transition:opacity .4s;
+}
+.slide-text.active{opacity:1}
+.slide-text h2{font-size:clamp(1.6rem,2.4vw,2.2rem)}
+.slide-text h2::after{content:"";display:block;width:48px;height:3px;background:var(--accent);margin-top:.5em}
+.slide-text ul.tips{list-style:none;padding:0;margin:0 0 1em}
+.slide-text ul.tips li{padding:10px 14px;margin-bottom:8px;background:var(--surface-2);border-left:3px solid var(--line);border-radius:0 var(--radius) var(--radius) 0;font-size:.95rem}
+.slide-text ul.tips strong{display:block;color:#fff;font-size:.85rem;letter-spacing:.02em;margin-bottom:2px}
+.open-link{align-self:flex-start;display:inline-flex;gap:6px;align-items:center;margin-top:4px;padding:8px 14px;font-size:.85rem;font-weight:500;color:var(--text);text-decoration:none;border:1px solid var(--line);border-radius:var(--radius)}
+.open-link:hover{background:#f2f2f2;color:#002147;border-color:#f2f2f2}
+
+.stage{position:sticky;top:calc(var(--header-h) + var(--nav-h));height:calc(100vh - var(--header-h) - var(--nav-h));background:var(--stage-bg)}
+.media{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .5s}
+.media.active{opacity:1;pointer-events:auto}
+.media iframe{width:100%;height:100%;border:0;display:block;background:var(--stage-bg)}
+
+/* =========================================================
+   END MATTER
+   ========================================================= */
+.endmatter{max-width:760px;margin:0 auto;padding:80px 24px 40px}
+.endmatter h3{font-family:var(--font-body);font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:#f2f2f2;margin-top:2em}
+.endmatter ul{padding-left:1.2em;color:var(--text-muted)}
+.endmatter p{color:var(--text-muted)}
+.credits{max-width:760px;margin:0 auto 0;padding:40px 24px 100px;border-top:1px solid var(--border)}
+.credits h2{font-size:1.5rem}
+.credits .authors{font-size:1.15rem}
+
+/* =========================================================
+   MOBILE — stack text above each map
+   ========================================================= */
+@media (max-width: 860px){
+  :root{--header-h:56px}
+  .site-header .logo img{height:32px}
+  .route{grid-template-columns:1fr;gap:4px}
+  .route::before{left:43px;right:auto;top:36px;bottom:36px;border-top:0;border-left:2px dashed var(--line)}
+  .route a{flex-direction:row;text-align:left;gap:14px;padding:6px}
+  .badge{width:72px;height:72px;flex:none}
+  .badge svg{width:36px;height:36px}
+  .route p{max-width:none}
+  .sidecar{display:block}
+  .sidecar .narrative{display:contents}
+  .stage{display:none}
+  .slide-text{min-height:0;padding:48px 20px 24px;opacity:1;border:0;background:var(--surface)}
+  .mobile-media{position:relative;height:75vh;min-height:420px;background:var(--stage-bg);border-bottom:1px solid var(--border)}
+  .mobile-media iframe{width:100%;height:100%;border:0}
+}
+@media (min-width: 861px){ .mobile-media{display:none} }
+</style>
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<header class="site-header">
+  <a class="logo" href="https://www.globalsecurity.pmb.ox.ac.uk/research-and-publications" target="_blank" rel="noopener">
+    <img src="https://www.arcgis.com/sharing/rest/content/items/602d803bb6fe4a6cb71e99c062ba64e6/resources/Lo7MSilqOz12I__xb3kYv.png"
+         alt="University of Oxford · Pembroke College · Global Security Programme">
+  </a>
+  <span class="title">Costa Rica</span>
+</header>
+
+<!-- ===================== COVER ===================== -->
+<section class="cover" id="top">
+  <div class="cover-inner">
+    <h1>Costa Rica</h1>
+    <p class="summary">Global Connections, Illicit Flows, Seizures</p>
+    <p class="byline">Interactive Maps</p>
+    <p class="date">August 20, 2026</p>
+  </div>
+  <a class="scroll-cue" href="#maps">Scroll</a>
+</section>
+
+<!-- ===================== NAV ===================== -->
+<nav class="section-nav" aria-label="Sections">
+  <ul>
+    <li><a href="#global-connections">Global Connections</a></li>
+    <li><a href="#types-of-flows">Types of Illicit Flows</a></li>
+    <li><a href="#seizures">Seizures</a></li>
+    <li><a href="#correlates">Socioeconomic &amp; Security Correlates</a></li>
+    <li><a href="#integrated">Integrated Data Map</a></li>
+    <li><a href="#authors">Authors</a></li>
+  </ul>
+</nav>
+
+<!-- ===================== MAP INDEX: click an icon to jump to its map ===================== -->
+<section class="map-index" id="maps">
+  <p class="intro">A visual exploration of <strong>illicit flow dynamics</strong>, <strong>socioeconomic indicators</strong> and <strong>security patterns</strong>, developed by the Global Security Programme at Pembroke College, University of Oxford.</p>
+  <ol class="route">
+    <li><a href="#global-connections">
+      <span class="badge"><span class="num">1</span>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle class="fill" cx="24" cy="24" r="17"/><path d="M7 24h34M24 7c-6 5-6 29 0 34M24 7c6 5 6 29 0 34"/><path class="flow" d="M10 15c8-9 22-9 30 2"/><circle class="flow" cx="40" cy="17" r="2.2"/></svg>
+      </span>
+      <span class="txt"><h4>Global Connections</h4><p>Visualize international routes of illicit flows</p></span>
+    </a></li>
+    <li><a href="#types-of-flows">
+      <span class="badge"><span class="num">2</span>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path class="fill" d="M8 34l10-4 12 4 10-4V12l-10 4-12-4-10 4z"/><path d="M18 12v18M30 16v18"/><path class="flow" d="M12 24c4-6 8 2 12-3s8 3 12-4"/><path d="M33 26l4 4M37 26l-4 4"/></svg>
+      </span>
+      <span class="txt"><h4>Types of Illicit Flows</h4><p>Geographic distribution of flows and their overlap with conflict</p></span>
+    </a></li>
+    <li><a href="#seizures">
+      <span class="badge"><span class="num">3</span>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path class="flow" d="M6 38c8-2 10-10 18-12s12-8 18-14"/><path class="fill" d="M24 30s-8-8-8-14a8 8 0 0116 0c0 6-8 14-8 14z"/><rect x="20" y="12" width="8" height="7" rx="1"/><path d="M20 15.5h8"/></svg>
+      </span>
+      <span class="txt"><h4>Seizures</h4><p>Spatial patterns of recorded seizures along trafficking routes</p></span>
+    </a></li>
+    <li><a href="#correlates">
+      <span class="badge"><span class="num">4</span>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 40h20"/><rect class="fill" x="10" y="28" width="4" height="12"/><rect class="fill" x="17" y="22" width="4" height="18"/><rect class="fill" x="24" y="16" width="4" height="24"/><path d="M36 14l7 3v6c0 5-3 8-7 10-4-2-7-5-7-10v-6z"/><path class="flow" d="M33 23l2.5 2.5L40 21"/></svg>
+      </span>
+      <span class="txt"><h4>Socioeconomic Development &amp; Security</h4><p>How development and security indicators overlap with illicit flows</p></span>
+    </a></li>
+    <li class="all"><a href="#integrated">
+      <span class="badge"><span class="num">5</span>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path class="fill" d="M24 8l17 8-17 8-17-8z"/><path d="M7 24l17 8 17-8"/><path class="flow" d="M7 32l17 8 17-8"/></svg>
+      </span>
+      <span class="txt"><h4>Integrated Data</h4><p>Access all dataset layers simultaneously</p></span>
+    </a></li>
+  </ol>
+</section>
+
+<!-- ===================== SIDECAR ===================== -->
+<!--
+  Each slide = one .slide-text (left) + one .media (right) with the same data-slide index.
+  To add a slide: copy a .slide-text block AND a .media block, give both the next number.
+  On mobile, a copy of each .media is placed under its text automatically by the script.
+-->
+<section class="sidecar">
+  <div class="narrative">
+
+    <!-- 1 -->
+    <article class="slide-text" id="global-connections" data-slide="0">
+      <h2>Global Connections</h2>
+      <p>This interactive globe visualizes illicit weapon and drug flows that start, end, or transit through Costa Rica.</p>
+      <ul class="tips">
+        <li><strong>Explore globally</strong>Click and drag to rotate the globe and view transnational routes across the world.</li>
+        <li><strong>Inspect specific flows</strong>Hover over or click active flow lines to view detailed metadata about each recorded trajectory.</li>
+        <li><strong>Filter data</strong>Use the map legend to toggle specific flow types on or off.</li>
+      </ul>
+      <p class="small">Flows reported at the national level are mapped to the geographic center (centroid) of the respective country.</p>
+      <a class="open-link" href="https://jotasamper.github.io/connections/CostaRicaFlowMap%2025.html" target="_blank" rel="noopener">Open map in new window ↗</a>
+    </article>
+
+    <!-- 2 -->
+    <article class="slide-text" id="types-of-flows" data-slide="1">
+      <h2>Types of Illicit Flows</h2>
+      <p>This interactive map displays illicit arms and drug flows starting, ending, or transiting through Costa Rica between 2022 and 2025. To explore geographic overlaps with broader regional instability, the map incorporates conflict data from the Uppsala Conflict Data Program (UCDP) covering 2015 to 2025.</p>
+      <ul class="tips">
+        <li><strong>Inspect specific flows</strong>Hover over or click active flow lines to view detailed metadata about each recorded trajectory.</li>
+        <li><strong>Filter data</strong>Use the map legend to toggle specific flow types on or off.</li>
+      </ul>
+      <p class="small">Flows reported at the national level are mapped to the geographic center (centroid) of the respective country.</p>
+      <a class="open-link" href="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=f9027a0a96cf456684d9f2d2e32a4a3e" target="_blank" rel="noopener">Open map in new window ↗</a>
+    </article>
+
+    <!-- 3 -->
+    <article class="slide-text" id="seizures" data-slide="2">
+      <h2>Seizures</h2>
+      <p>This map displays selected interdiction points for drugs and weapons across Costa Rican trafficking routes between 2022 and 2025. By overlaying seizure locations with active illicit flow lines, this visualization highlights how interventions intersect with known trafficking routes and regional hotspots.</p>
+      <ul class="tips">
+        <li><strong>Inspect specific flows</strong>Hover over or click active flow lines to view detailed metadata about each recorded trajectory.</li>
+        <li><strong>Filter data</strong>Use the map legend to toggle seizure data on or off.</li>
+      </ul>
+      <p class="small">Flows reported at the national level are mapped to the geographic center (centroid) of the respective country.</p>
+      <a class="open-link" href="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=357e244fc1e14b08bc351378809cd4e4" target="_blank" rel="noopener">Open map in new window ↗</a>
+    </article>
+
+    <!-- 4 -->
+    <article class="slide-text" id="correlates" data-slide="3">
+      <h2>Socioeconomic and Security Correlates of Illicit Flows</h2>
+      <p>This map examines local vulnerability and security across Costa Rica at the canton level. It overlays the Multidimensional Poverty Index (IPM) and the Public Security Index (PUB) directly with illicit flows and seizure data.</p>
+      <ul class="tips">
+        <li><strong>Inspect data</strong>Click specific flows or cantons to see their attributes.</li>
+        <li><strong>Compare indicators</strong>Use the map's built-in tools to explore the poverty (IPM) and security (PUB) layers alongside the flows.</li>
+      </ul>
+      <p class="small">Flows reported at the national level are mapped to the geographic center (centroid) of the respective country.</p>
+      <a class="open-link" href="https://ucboulder.maps.arcgis.com/apps/instant/basic/index.html?appid=f037d00fe8fe4c0fbf34657b10eec1e1" target="_blank" rel="noopener">Open map in new window ↗</a>
+    </article>
+
+    <!-- 5 -->
+    <article class="slide-text" id="integrated" data-slide="4">
+      <h2>Integrated Data Map</h2>
+      <p>This map combines all GeoDIF dataset layers for Costa Rica into a single interactive interface, including illicit flows, seizures, conflict zones, and socioeconomic and security indicators.</p>
+      <ul class="tips">
+        <li><strong>Inspect flows or administrative units</strong>Hover over or click active flow lines or administrative units to view detailed metadata.</li>
+        <li><strong>Filter data</strong>Use the map legend to toggle layers on or off.</li>
+      </ul>
+      <a class="open-link" href="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=fbebacb6060142dba060dc97d2a7afd6" target="_blank" rel="noopener">Open map in new window ↗</a>
+    </article>
+
+  </div>
+
+  <div class="stage">
+    <div class="media" data-slide="0">
+      <iframe data-src="https://jotasamper.github.io/connections/CostaRicaFlowMap%2025.html" title="Costa Rica Illegal Flow Map" allowfullscreen></iframe>
+    </div>
+    <div class="media" data-slide="1">
+      <iframe data-src="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=f9027a0a96cf456684d9f2d2e32a4a3e" title="Types of Illicit Flows" allowfullscreen></iframe>
+    </div>
+    <div class="media" data-slide="2">
+      <iframe data-src="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=357e244fc1e14b08bc351378809cd4e4" title="Costa Rica Seizure" allowfullscreen></iframe>
+    </div>
+    <div class="media" data-slide="3">
+      <iframe data-src="https://ucboulder.maps.arcgis.com/apps/instant/basic/index.html?appid=f037d00fe8fe4c0fbf34657b10eec1e1" title="Socioeconomic and Security Correlates of Illicit Flows" allowfullscreen></iframe>
+    </div>
+    <div class="media" data-slide="4">
+      <iframe data-src="https://ucboulder.maps.arcgis.com/apps/instant/interactivelegend/index.html?appid=fbebacb6060142dba060dc97d2a7afd6" title="Costa Rica ALL" allowfullscreen></iframe>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== END MATTER ===================== -->
+<section class="endmatter">
+  <h3>Data sources</h3>
+  <ul>
+    <li>Data on illicit flows and seizures are original data collected by the research team from various publicly available sources. For more information on the sources and the methodology, please contact the research team.</li>
+    <li>Research assistant involved in the data collection: Sofía Cubillos Morgado.</li>
+    <li>Data on armed conflict was sourced from the UCDP GED.</li>
+  </ul>
+  <h3>Note</h3>
+  <p>This material is based upon work supported by CAF – the Development Bank for Latin America and the Caribbean through the technical cooperation “Illicit Flows and Security in Latin America and the Caribbean”.</p>
+</section>
+
+<footer class="credits" id="authors">
+  <h2>Authors</h2>
+  <p class="authors">Annette Idler, Jota Samper, Lamis Saleh, Hernán Manrique</p>
+  <p class="small">Global Security Programme, Pembroke College, University of Oxford</p>
+</footer>
+
+<!-- ===================== SCRIPT ===================== -->
+<script>
+(function(){
+  const mq = matchMedia("(max-width: 860px)");
+  const texts  = [...document.querySelectorAll(".slide-text")];
+  const medias = [...document.querySelectorAll(".stage .media")];
+
+  /* ---- mobile: put a copy of each map right after its text ---- */
+  texts.forEach((t,i)=>{
+    const m = document.createElement("div");
+    m.className = "mobile-media";
+    m.innerHTML = medias[i].innerHTML;
+    t.after(m);
+  });
+
+  /* ---- load the iframes in a container ---- */
+  function load(el){
+    el.querySelectorAll("iframe[data-src]").forEach(f=>{ f.src = f.dataset.src; f.removeAttribute("data-src"); });
+  }
+
+  /* mobile: load when scrolled near */
+  const near = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting && mq.matches){ load(e.target); near.unobserve(e.target); }
+  }),{rootMargin:"600px 0px"});
+  document.querySelectorAll(".mobile-media").forEach(el=>near.observe(el));
+
+  /* desktop: activate the slide whose text is in the middle of the screen */
+  let current = -1;
+  function activate(i){
+    if(i===current) return; current = i;
+    texts.forEach((t,j)=>t.classList.toggle("active", j===i));
+    medias.forEach((m,j)=>m.classList.toggle("active", j===i));
+    if(!mq.matches) load(medias[i]);
+  }
+  const mid = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting) activate(+e.target.dataset.slide);
+  }),{rootMargin:"-45% 0px -45% 0px"});
+  texts.forEach(t=>mid.observe(t));
+  texts[0].classList.add("active"); medias[0].classList.add("active");
+
+  /* preload the first map once the reader reaches the map index */
+  new IntersectionObserver((es,o)=>es.forEach(e=>{
+    if(e.isIntersecting && !mq.matches){ load(medias[0]); o.disconnect(); }
+  }),{rootMargin:"300px 0px"}).observe(document.querySelector(".sidecar"));
+
+  /* ---- nav highlight ---- */
+  const links = [...document.querySelectorAll(".section-nav a")];
+  const navObs = new IntersectionObserver(es=>es.forEach(e=>{
+    if(e.isIntersecting) links.forEach(a=>a.classList.toggle("active", a.getAttribute("href")==="#"+e.target.id));
+  }),{rootMargin:"-45% 0px -50% 0px"});
+  links.forEach(a=>{ const t=document.querySelector(a.getAttribute("href")); if(t) navObs.observe(t); });
+
+})();
+</script>
+</body>
+</html>
